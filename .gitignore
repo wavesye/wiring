@@ -39,5 +39,6 @@ yarn-error.log*
 /outputs/
 /work/
 /backend/.venv/
+/backend/.venv312/
 __pycache__/
 .pytest_cache/

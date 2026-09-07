@@ -1,0 +1,12 @@
+{
+  "pin_types": {
+    "CAN_H": {"can_connect_to": ["CAN_H"]},
+    "CAN_L": {"can_connect_to": ["CAN_L"]},
+    "NTC_SENSOR": {"can_connect_to": ["NTC_INPUT", "ADC_NTC"]},
+    "NTC_OUTPUT": {"can_connect_to": ["NTC_INPUT", "ADC_NTC"]},
+    "POWER_12V_OUT": {"can_connect_to": ["POWER_12V_IN"]},
+    "DAISY_OUT": {"can_connect_to": ["DAISY_IN"]},
+    "GND": {"can_connect_to": ["GND"]}
+  },
+  "direction_exceptions": [["BIDIRECTIONAL", "BIDIRECTIONAL"]]
+}

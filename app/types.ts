@@ -1,0 +1,13 @@
+export type Direction="IN"|"OUT"|"BIDIRECTIONAL";
+export type Pin={number:number;name:string;type:string;direction:Direction;allow_multiple:boolean};
+export type Connector={id:string;name:string;pin_count:number;pins:Pin[]};
+export type Template={id:string;name:string;description:string;connectors:Connector[];created_at?:string;updated_at?:string};
+export type Position={x:number;y:number};
+export type Instance={id:string;template_id:string;position:Position};
+export type Endpoint={component:string;connector:string;pin:number};
+export type WiringConnection={id:string;from:Endpoint;to:Endpoint};
+export type Project={id:string;name:string;instances:Instance[];connections:WiringConnection[];created_at:string;updated_at:string};
+export type ProjectInput=Pick<Project,"name"|"instances"|"connections">;
+export type Rules={pin_types:Record<string,string[]>;direction_exceptions:[Direction,Direction][];sequential_chains:unknown[];paths:unknown[]};
+export type Violation={rule_id:string;severity:"error"|"warning";message:string;connection_id?:string;from?:Endpoint;to?:Endpoint};
+export type Validation={valid:boolean;summary:{errors:number;warnings:number};violations:Violation[];graph:{pin_nodes:number;pin_edges:number;cycles:string[][];disconnected_components:string[]}};

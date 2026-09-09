@@ -1,100 +1,87 @@
-# vinext-starter
+# Visual Wiring Definition Tool
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+Visual Wiring Definition Tool is an engineering MVP for defining reusable component pinouts, placing component instances on a React Flow canvas, connecting exact pins, validating the resulting topology, and exporting interface definitions. Component templates and saved projects—not spreadsheets—are the source of truth.
 
-## Prerequisites
+## Architecture
 
-- Node.js `>=22.13.0`
+```text
+Component Library → ComponentTemplate → ComponentInstance → React Flow
+                                                        ↓
+FastAPI + SQLite ← saved Project + pin references ← Connections
+        ├── deterministic Rule Engine
+        ├── pin-level NetworkX Graph Engine
+        └── validated CSV / Excel export
+```
 
-## Quick Start
+- Frontend: React, TypeScript, Vinext/Next-compatible App Router, `@xyflow/react`.
+- Backend: FastAPI, Pydantic, SQLite, NetworkX, pandas, openpyxl.
+- Rules: [`backend/app/rules.json`](backend/app/rules.json), loaded by both the backend validator and the frontend instant-check API.
+- Persistence: [`backend/wiring.db`](backend/wiring.db) by default; the file is runtime data and is not committed.
+
+## Data model
+
+- `ComponentTemplate` owns Connector and Pin definitions. A Pin contains `number`, `name`, `type`, `direction`, and `allow_multiple`.
+- `ComponentInstance` references `template_id` and stores its React Flow `position`.
+- `Connection` contains only an ID and two Endpoint references. It never duplicates signal/type metadata.
+- `Project` owns its name, instances, connections, ID, and timestamps.
+
+## Run locally
+
+Backend (Python 3.11+):
+
+```bash
+python3 -m venv backend/.venv
+backend/.venv/bin/pip install -r backend/requirements.txt
+backend/.venv/bin/uvicorn app.main:app --reload --app-dir backend --port 8000
+```
+
+Frontend, in another terminal:
 
 ```bash
 npm install
 npm run dev
-npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
+Copy `.env.example` to `.env.local` if the API is not at `http://localhost:8000/api`. API documentation is available at `http://localhost:8000/docs`.
 
-## Included Shape
+## Complete workflow
 
-- edit site code under `app/`
-- `.openai/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
+1. Select **+** in Component Library to create a template. Define one or more connectors and set Pin count; the table creates all rows at once for bulk editing.
+2. Edit Pin name, type, direction, and multiple-connection behavior directly in the table. Templates can also be imported/exported as JSON.
+3. Create or open a project, then drag templates onto the canvas. Double-clicking a library item also creates an instance.
+4. Expand/collapse connectors or search pins inside a large 32/33-pin node. Drag between exact Pin handles to connect them.
+5. Select **Save & Validate**. Instances, positions, and connections are written to SQLite, then the authoritative backend validator runs.
+6. Fix violations from the Validation panel; selecting a connection violation focuses its edge.
+7. After validation passes, export CSV or formatted Excel from the header. Export endpoints validate the saved project again before returning a file.
 
-## Workspace Auth Headers
+Refreshing or reopening the browser restores saved templates, projects, node positions, and connections from SQLite.
 
-Signed-in visitors receive both `oai-authenticated-user-id` and `oai-authenticated-user-email`. Private Sites require every visitor to sign in; public Sites may also have anonymous visitors, for whom neither header is present.
+## Validation
 
-The user ID is stable for the same user on the same Site and different across Sites. Email and name are intended for display or contact purposes.
+The deterministic engine checks endpoint existence, configured Pin-type compatibility, direction, duplicate incoming connections with `allow_multiple`, cycles, disconnected components, required paths, and configurable sequential chains. The graph contains unique Pin Endpoint nodes and connection edges; a component projection is used only for topology-level cycle/path checks.
 
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
+Sequential chains are generic rules. The demo configuration validates numeric BIC ordering from `P2` to `P1`, detecting skipped members, missing links, duplicate inputs, and loops without hard-coding BIC logic in Python.
 
-Treat the full name as optional and fall back to email when it is absent:
+Run the tests:
 
-```tsx
-import { headers } from "next/headers";
-
-export default async function Home() {
-  const requestHeaders = await headers();
-  const userId = requestHeaders.get("oai-authenticated-user-id");
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
-
-  const displayName = fullName ?? email;
-  // ...
-}
+```bash
+PYTHONPATH=backend backend/.venv/bin/pytest backend/tests -q
+npm test
 ```
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+The backend suite covers valid CAN, type mismatches, NTC/GPIO, 12V/5V, missing pins, duplicate inputs, `allow_multiple`, cycles, sequential chains, path validation, SQLite reopen, and CSV export.
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+## API
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+Main resources:
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
+- `GET/POST /api/component-templates`
+- `GET/PUT/DELETE /api/component-templates/{id}`
+- `POST /api/component-templates/import`
+- `GET/POST /api/projects`
+- `GET/PUT/DELETE /api/projects/{id}`
+- `POST /api/projects/{id}/validate`
+- `GET /api/projects/{id}/export/csv`
+- `GET /api/projects/{id}/export/excel`
 
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
-
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Useful Commands
-
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+AI, RAG, Neo4j, and agent frameworks are deliberately outside this MVP. A future review layer can propose candidate definitions and rules, but deterministic validation remains authoritative.

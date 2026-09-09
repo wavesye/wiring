@@ -1,12 +1,11 @@
 {
   "pin_types": {
-    "CAN_H": {"can_connect_to": ["CAN_H"]},
-    "CAN_L": {"can_connect_to": ["CAN_L"]},
-    "NTC_SENSOR": {"can_connect_to": ["NTC_INPUT", "ADC_NTC"]},
-    "NTC_OUTPUT": {"can_connect_to": ["NTC_INPUT", "ADC_NTC"]},
-    "POWER_12V_OUT": {"can_connect_to": ["POWER_12V_IN"]},
-    "DAISY_OUT": {"can_connect_to": ["DAISY_IN"]},
-    "GND": {"can_connect_to": ["GND"]}
+    "CAN_H": ["CAN_H"], "CAN_L": ["CAN_L"],
+    "NTC_SENSOR": ["NTC_INPUT", "ADC_NTC"], "NTC_OUTPUT": ["NTC_INPUT", "ADC_NTC"],
+    "POWER_12V_OUT": ["POWER_12V_IN"], "POWER_5V_OUT": ["POWER_5V_IN"],
+    "DAISY_OUT": ["DAISY_IN"], "GPIO": ["GPIO"], "GND": ["GND"]
   },
-  "direction_exceptions": [["BIDIRECTIONAL", "BIDIRECTIONAL"]]
+  "direction_exceptions": [["BIDIRECTIONAL", "BIDIRECTIONAL"]],
+  "sequential_chains": [{"id":"bic_daisy_chain","type":"sequential_chain","component_type":"BIC","instance_order":"numeric_suffix","from_connector":"P2","to_connector":"P1"}],
+  "paths": []
 }
